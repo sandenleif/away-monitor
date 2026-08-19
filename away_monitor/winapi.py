@@ -34,6 +34,10 @@ _kernel32.CloseHandle.restype = wintypes.BOOL
 _UINT32_MASK = 0xFFFFFFFF
 _DESKTOP_SWITCHDESKTOP = 0x0100
 _ERROR_ALREADY_EXISTS = 183
+_SM_XVIRTUALSCREEN = 76
+_SM_YVIRTUALSCREEN = 77
+_SM_CXVIRTUALSCREEN = 78
+_SM_CYVIRTUALSCREEN = 79
 
 # Muss bis zum Prozessende leben -- gibt Windows den Mutex frei, koennte
 # eine zweite Instanz starten.
@@ -100,3 +104,15 @@ def instance_is_running(name: str) -> bool:
         return False
     _kernel32.CloseHandle(handle)
     return error == _ERROR_ALREADY_EXISTS
+
+
+def virtual_screen() -> tuple[int, int, int, int]:
+    """Rechteck ueber *alle* Bildschirme als (x, y, breite, hoehe).
+
+    Tk kennt nur den Hauptbildschirm. Wer einen Monitor links oder oberhalb
+    stehen hat, arbeitet dort mit negativen Koordinaten -- gegen
+    winfo_screenwidth() geklemmt landet ein Fenster von dort wieder auf dem
+    Hauptbildschirm."""
+    metric = _user32.GetSystemMetrics
+    return (metric(_SM_XVIRTUALSCREEN), metric(_SM_YVIRTUALSCREEN),
+            metric(_SM_CXVIRTUALSCREEN), metric(_SM_CYVIRTUALSCREEN))

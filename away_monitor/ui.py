@@ -21,7 +21,7 @@ from tkinter import messagebox
 import numpy as np
 from PIL import Image, ImageDraw, ImageFont, ImageTk
 
-from . import theme, widgets
+from . import theme, widgets, winapi
 
 log = logging.getLogger(__name__)
 
@@ -341,11 +341,10 @@ class _StickyNote:
         window.configure(bg=theme.BORDER)
 
         x, y = position
-        if x < 0 or y < 0:
+        if x == -1 and y == -1:
             x = window.winfo_screenwidth() - _STICKY_W - 24
             y = 24
-        x = max(0, min(x, window.winfo_screenwidth() - _STICKY_W))
-        y = max(0, min(y, window.winfo_screenheight() - _STICKY_H))
+        x, y = clamp_to_screens(x, y, _STICKY_W, _STICKY_H, winapi.virtual_screen())
         window.geometry(f"{_STICKY_W}x{_STICKY_H}+{x}+{y}")
 
         body = tk.Frame(window, bg=theme.ELEVATED)
@@ -644,6 +643,19 @@ class _PreviewWindow:
             self._window.destroy()
         except tk.TclError:
             log.debug("Live-Ansicht war bereits zerstoert", exc_info=True)
+
+
+def clamp_to_screens(x: int, y: int, width: int, height: int,
+                     bounds: tuple[int, int, int, int]) -> tuple[int, int]:
+    """Haelt ein Fenster im sichtbaren Bereich -- ueber alle Bildschirme hinweg.
+
+    bounds ist (x, y, breite, hoehe) des virtuellen Desktops. Auf einem Monitor
+    links des Hauptbildschirms ist x negativ; dagegen auf 0 zu klemmen wuerde
+    das Fenster jedes Mal zurueckholen."""
+    left, top, total_width, total_height = bounds
+    x = max(left, min(x, left + total_width - width))
+    y = max(top, min(y, top + total_height - height))
+    return int(x), int(y)
 
 
 def _load_font(size: int) -> ImageFont.ImageFont:

@@ -8,6 +8,7 @@ from __future__ import annotations
 import unittest
 
 from away_monitor import theme, widgets
+from away_monitor.ui import clamp_to_screens
 from away_monitor.monitor import State
 
 
@@ -126,6 +127,34 @@ class TrayConstructionTest(unittest.TestCase):
         self.assertIsNotNone(tray)
         # Statuszeile und Zustandswechsel laufen ueber dieselbe Farbtabelle.
         self.assertIn("aktiv", tray._status_text(None))
+
+
+class ScreenClampTest(unittest.TestCase):
+    """Mehrere Bildschirme: links oder oberhalb des Hauptbildschirms sind die
+    Koordinaten negativ. Gegen 0 geklemmt springt ein Fenster von dort bei
+    jedem Start zurueck -- beim Autostart also taeglich."""
+
+    # Drei Monitore nebeneinander, der Hauptbildschirm in der Mitte.
+    BOUNDS = (-2048, 0, 6144, 1152)
+
+    def test_position_auf_dem_linken_monitor_bleibt(self) -> None:
+        self.assertEqual(clamp_to_screens(-2044, 7, 224, 62, self.BOUNDS), (-2044, 7))
+
+    def test_position_auf_dem_rechten_monitor_bleibt(self) -> None:
+        self.assertEqual(clamp_to_screens(3000, 500, 224, 62, self.BOUNDS), (3000, 500))
+
+    def test_zu_weit_links_landet_am_rand(self) -> None:
+        self.assertEqual(clamp_to_screens(-99999, 0, 224, 62, self.BOUNDS), (-2048, 0))
+
+    def test_zu_weit_rechts_bleibt_ganz_sichtbar(self) -> None:
+        x, y = clamp_to_screens(99999, 99999, 224, 62, self.BOUNDS)
+        self.assertEqual(x, -2048 + 6144 - 224)
+        self.assertEqual(y, 1152 - 62)
+
+    def test_einzelner_bildschirm_verhaelt_sich_wie_frueher(self) -> None:
+        bounds = (0, 0, 1920, 1080)
+        self.assertEqual(clamp_to_screens(-50, -50, 224, 62, bounds), (0, 0))
+        self.assertEqual(clamp_to_screens(100, 100, 224, 62, bounds), (100, 100))
 
 
 if __name__ == "__main__":

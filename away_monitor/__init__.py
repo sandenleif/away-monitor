@@ -1,3 +1,3 @@
 """away-monitor: sperrt Windows, wenn die Kamera niemanden mehr vor dem Rechner sieht."""
 
-__version__ = "1.2.1"
+__version__ = "1.2.2"
