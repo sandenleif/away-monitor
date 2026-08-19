@@ -1,0 +1,13 @@
+[project]
+name = "away-monitor"
+version = "1.0.0"
+description = "Sperrt Windows, wenn die Kamera niemanden mehr vor dem Rechner sieht"
+requires-python = ">=3.11"
+dependencies = [
+    "opencv-python>=4.8",
+    "pystray>=0.19",
+    "Pillow>=10.0",
+]
+
+[tool.setuptools.packages.find]
+include = ["away_monitor*"]

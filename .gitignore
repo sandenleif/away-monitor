@@ -1,0 +1,9 @@
+.venv/
+__pycache__/
+*.pyc
+away-monitor.log*
+config.toml
+models/*.onnx
+assets/icon.ico
+build/
+dist/
