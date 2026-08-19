@@ -154,16 +154,25 @@ Läuft erst die Tests, baut dann `dist\away-monitor.exe` (~72 MB, alles
 eingebettet — Python, OpenCV, das Modell) und schreibt die passende
 `away-monitor.exe.sha256`.
 
-Veröffentlichen übernimmt GitHub Actions
-([.github/workflows/release.yml](.github/workflows/release.yml)): ein Tag `v*`
-baut die Exe, prüft, dass `__version__` zum Tag passt, und hängt Exe und
-Prüfsumme ans Release. Genau diese beiden Dateien sucht der Updater.
+Veröffentlichen macht ein Befehl — Tests, Build, Tag, Upload:
 
 ```
 # away_monitor/__init__.py: __version__ hochsetzen, dann
-git tag v1.1.0
-git push origin v1.1.0
+powershell -ExecutionPolicy Bypass -File scripts\release.ps1
 ```
+
+Mit `-DryRun` läuft alles bis zum Veröffentlichen und hält davor an. Das Skript
+weigert sich bei uncommitteten Änderungen und bei einem Tag, den es schon gibt —
+sonst passt das Release nicht zum Stand im Repo. Es braucht nur den
+`repo`-Scope, keinen `workflow`-Scope.
+
+Wer es lieber in der CI hätte: `.github/workflows/release.yml` im Projekt tut
+dasselbe bei einem Tag `v*`. Das Anlegen dieser Datei verlangt allerdings ein
+Token mit `workflow`-Scope — über die GitHub-Weboberfläche geht es ohne.
+
+Hinweis: PyInstaller-Builds sind nicht bitgenau reproduzierbar (eingebettete
+Zeitstempel). Ein Neubau derselben Quellen ergibt eine andere Prüfsumme. Die
+maßgebliche steht deshalb immer neben der veröffentlichten Exe im Release.
 
 ## Kommandozeile
 
