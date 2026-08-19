@@ -69,6 +69,8 @@ def _parse_args(argv: list[str] | None) -> argparse.Namespace:
                         help="Pfad zur config.toml")
     parser.add_argument("--live", action="store_true",
                         help="Live-Ansicht direkt beim Start oeffnen")
+    parser.add_argument("--sticky", action="store_true",
+                        help="Notizzettel direkt beim Start einblenden")
     parser.add_argument("--dry-run", action="store_true",
                         help="nur protokollieren statt wirklich zu sperren")
     parser.add_argument("--check", action="store_true",
@@ -194,6 +196,21 @@ def main(argv: list[str] | None = None) -> int:
         if tray is not None:
             tray.refresh_menu()
 
+    def toggle_sticky(enabled: bool) -> None:
+        if monitor is None:
+            return
+        monitor.set_sticky_enabled(enabled)
+        if enabled:
+            ui.open_sticky()
+        else:
+            ui.close_sticky()
+        config_module.save_sticky(enabled=enabled, path=args.config)
+        if tray is not None:
+            tray.refresh_menu()
+
+    def sticky_moved(x: int, y: int) -> None:
+        config_module.save_sticky(x=x, y=y, path=args.config)
+
     def preview_closed() -> None:
         if monitor is not None:
             monitor.set_preview_enabled(False)
@@ -207,8 +224,11 @@ def main(argv: list[str] | None = None) -> int:
             on_threshold_save=lambda value: config_module.save_score_threshold(value, args.config),
             on_pause_toggle=set_paused,
             on_preview_closed=preview_closed,
+            on_sticky_moved=sticky_moved,
         ),
         preview_max_width=cfg.preview_max_width,
+        sticky_position=(cfg.sticky_x, cfg.sticky_y),
+        sticky_opacity=cfg.sticky_opacity,
     )
 
     try:
@@ -299,7 +319,8 @@ def main(argv: list[str] | None = None) -> int:
                 on_quit=shutdown, on_preview_toggle=toggle_preview,
                 on_check_updates=lambda: threading.Thread(
                     target=check_updates, args=(True,), name="update-check", daemon=True
-                ).start())
+                ).start(),
+                on_sticky_toggle=toggle_sticky)
     monitor.set_state_listener(tray.set_state)
     monitor.set_preview_listener(ui.push_snapshot)
 
@@ -307,6 +328,8 @@ def main(argv: list[str] | None = None) -> int:
     tray.start()
     if args.live:
         toggle_preview(True)
+    if args.sticky or cfg.sticky_enabled:
+        toggle_sticky(True)
     if cfg.update_check_on_start and cfg.update_repository:
         timer = threading.Timer(_UPDATE_START_DELAY, check_updates, args=(False,))
         timer.daemon = True

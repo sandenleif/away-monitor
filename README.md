@@ -107,6 +107,20 @@ Wanduhr, nicht mit Takten. Kostet ~15 ms CPU pro Bild.
 Mit „Kamerabild anzeigen" lässt sich das Video ausblenden — dann siehst du nur
 die Boxen auf schwarzem Grund.
 
+## Notizzettel
+
+Tray → **Notizzettel** blendet ein kleines Fenster ein, das immer im Vordergrund
+bleibt: farbiger Punkt für den Zustand, die Kurzbegründung darunter, und sobald
+der Countdown läuft, die verbleibenden Sekunden groß daneben.
+
+Gedacht für den Fall, dass man wissen will, was die App gerade denkt, ohne die
+Live-Ansicht offen zu lassen — die hält die Kamera an und kostet CPU, der Zettel
+nicht. Er zeigt nur Text und braucht kein Kamerabild.
+
+Verschieben durch Ziehen; die Position wird gemerkt und beim nächsten Start
+wiederhergestellt. Ein- und ausschalten über das Tray-Menü oder `--sticky`,
+Deckkraft über `opacity` in der `config.toml`.
+
 ## Updates
 
 Die App aktualisiert sich selbst aus GitHub-Releases. Ihre Herkunft ist fest
@@ -185,6 +199,7 @@ maßgebliche steht deshalb immer neben der veröffentlichten Exe im Release.
 | Flag | Wirkung |
 |---|---|
 | `--live` | Live-Ansicht direkt beim Start öffnen |
+| `--sticky` | Notizzettel direkt beim Start einblenden |
 | `--check` | Modell, Kamera und Erkennung einmal prüfen, dann beenden |
 | `--check-update` | einmal nach einem Update sehen, dann beenden |
 | `--dry-run` | protokolliert „würde jetzt sperren", statt zu sperren |
@@ -209,8 +224,9 @@ jedem Wert. Die drei Stellschrauben, die man wirklich anfasst:
 Weitere Werte: `score_threshold` (0.6; niedriger = empfindlicher bei schlechtem
 Licht, aber anfälliger für Poster und Fotos), `on_camera_error`
 (`never_lock` / `lock`), `camera.index`, `open_retry_seconds`,
-`release_when_active`, der Abschnitt `[preview]` für die Live-Ansicht und
-`[update]` für die Selbstaktualisierung.
+`release_when_active`, `[preview]` für die Live-Ansicht, `[sticky]` für den
+Notizzettel (Sichtbarkeit, gemerkte Position, Deckkraft) und `[update]` für die
+Selbstaktualisierung.
 
 Änderungen wirken nach einem Neustart der App — außer `score_threshold`, wenn du
 ihn über die Live-Ansicht setzt.
@@ -262,7 +278,7 @@ deutlich mehr Aufwand und will sauber getunt werden.
 .venv\Scripts\python.exe -m unittest discover -s tests
 ```
 
-62 Tests, fast alle ohne Hardware. Der Zustandsautomat läuft gegen Fakes an
+73 Tests, fast alle ohne Hardware. Der Zustandsautomat läuft gegen Fakes an
 einer Fake-Uhr, die Kamera gegen ein Fake-cv2, der Updater gegen einen lokalen
 HTTP-Server. Abgedeckt sind unter anderem:
 
@@ -285,13 +301,21 @@ fehlt.
 | `away_monitor/winapi.py` | Idle-Zeit, Sperren, Sperr-Erkennung, Instanzsperre |
 | `away_monitor/camera.py` | Kamera öffnen/freigeben, Backend-Fallback, Aufwärmphase |
 | `away_monitor/detector.py` | YuNet-Gesichtserkennung (~15 ms/Bild) |
-| `away_monitor/ui.py` | Warn-Overlay und Live-Ansicht (Tk im Hauptthread) |
+| `away_monitor/ui.py` | Overlay, Live-Ansicht und Notizzettel (Tk im Hauptthread) |
+| `away_monitor/theme.py` | Farben, Abstände, Schriften, Windows-Fensterrahmen |
+| `away_monitor/widgets.py` | Schalter, Regler, Ring — als PIL-Bilder gezeichnet |
 | `away_monitor/tray.py` | Tray-Icon und Menü |
 | `away_monitor/updater.py` | Releases prüfen, laden, verifizieren, tauschen |
 | `entry.py` | Startpunkt für PyInstaller (relative Importe brauchen ein Paket) |
 
 Drei Threads: Tk im Hauptthread, der Monitor als Worker, pystray daneben.
 Tk-Aufrufe gehen ausschließlich über eine Queue in den Hauptthread.
+
+Tkinter bringt weder Schalter noch Regler mit, die nach 2020 aussehen, und
+zeichnet Rundungen ohne Kantenglättung. Sie entstehen deshalb als PIL-Bilder:
+vierfach überabgetastet gerendert, heruntergerechnet und als Bild in ein Label
+gelegt. Titelleiste und Fensterecken kommen über `dwmapi` vom System — auf
+älteren Windows-Versionen passiert dabei schlicht nichts.
 
 Die Live-Ansicht greift **nicht** selbst auf die Kamera zu — DirectShow gibt sie
 exklusiv heraus, ein zweiter Zugriff würde scheitern. Stattdessen legt der

@@ -110,6 +110,16 @@ tick_seconds = 0.1
 # Breite des Vorschaubilds in Pixeln.
 max_width = 480
 
+[sticky]
+# Kleiner Notizzettel, der Zustand und Countdown immer im Vordergrund haelt.
+# Laesst sich auch ueber das Tray-Menue ein- und ausschalten.
+enabled = false
+# Merkt sich, wohin du ihn geschoben hast. -1 heisst: rechts oben einblenden.
+x = -1
+y = -1
+# Deckkraft zwischen 0.3 und 1.0.
+opacity = 0.92
+
 [behavior]
 # Was tun, wenn die Kamera nicht zu oeffnen ist (z.B. weil Teams sie belegt)?
 #   "never_lock" -- als anwesend werten. Sinnvoller Default: eine belegte Kamera
@@ -158,6 +168,11 @@ class Config:
     preview_tick_seconds: float = 0.1
     preview_max_width: int = 480
 
+    sticky_enabled: bool = False
+    sticky_x: int = -1
+    sticky_y: int = -1
+    sticky_opacity: float = 0.92
+
     on_camera_error: str = "never_lock"
     start_paused: bool = False
 
@@ -194,6 +209,7 @@ def load(path: Path = CONFIG_PATH) -> Config:
     camera = raw.get("camera", {})
     detection = raw.get("detection", {})
     preview = raw.get("preview", {})
+    sticky = raw.get("sticky", {})
     behavior = raw.get("behavior", {})
     update = raw.get("update", {})
     logging_ = raw.get("logging", {})
@@ -232,6 +248,10 @@ def load(path: Path = CONFIG_PATH) -> Config:
             0.05, float(preview.get("tick_seconds", defaults.preview_tick_seconds))
         ),
         preview_max_width=int(preview.get("max_width", defaults.preview_max_width)),
+        sticky_enabled=bool(sticky.get("enabled", defaults.sticky_enabled)),
+        sticky_x=int(sticky.get("x", defaults.sticky_x)),
+        sticky_y=int(sticky.get("y", defaults.sticky_y)),
+        sticky_opacity=min(1.0, max(0.3, float(sticky.get("opacity", defaults.sticky_opacity)))),
         on_camera_error=on_error,
         start_paused=bool(behavior.get("start_paused", defaults.start_paused)),
         update_repository=repository,
@@ -310,4 +330,55 @@ def save_score_threshold(value: float, path: Path = CONFIG_PATH) -> bool:
         log.exception("config.toml nicht schreibbar: %s", path)
         return False
     log.info("score_threshold = %.2f in %s gespeichert", value, path)
+    return True
+
+
+_STICKY_SECTION = re.compile(r"^\[sticky\]$", re.MULTILINE)
+
+
+def save_sticky(enabled: bool | None = None, x: int | None = None,
+                y: int | None = None, path: Path = CONFIG_PATH) -> bool:
+    """Merkt Sichtbarkeit und Position des Notizzettels.
+
+    Aendert nur die betroffenen Zeilen im [sticky]-Abschnitt; Kommentare und
+    alles ausserhalb bleiben unangetastet."""
+    try:
+        text = path.read_text(encoding="utf-8")
+    except OSError:
+        log.warning("config.toml nicht lesbar: %s", path, exc_info=True)
+        return False
+
+    section = _STICKY_SECTION.search(text)
+    if section is None:
+        log.debug("Kein [sticky]-Abschnitt -- Position wird nicht gemerkt")
+        return False
+
+    # Der Abschnitt endet beim naechsten "[" am Zeilenanfang.
+    following = re.search(r"^\[", text[section.end():], re.MULTILINE)
+    end = section.end() + (following.start() if following else len(text) - section.end())
+
+    block = text[section.end():end]
+    wanted: dict[str, str] = {}
+    if enabled is not None:
+        wanted["enabled"] = "true" if enabled else "false"
+    if x is not None:
+        wanted["x"] = str(int(x))
+    if y is not None:
+        wanted["y"] = str(int(y))
+
+    updated = block
+    for key, value in wanted.items():
+        pattern = re.compile(rf"^(\s*{key}\s*=\s*).*$", re.MULTILINE)
+        if pattern.search(updated) is None:
+            updated = updated.rstrip("\n") + f"\n{key} = {value}\n"
+        else:
+            updated = pattern.sub(lambda m, v=value: f"{m.group(1)}{v}", updated, count=1)
+
+    if updated == block:
+        return True
+    try:
+        path.write_text(text[:section.end()] + updated + text[end:], encoding="utf-8")
+    except OSError:
+        log.warning("config.toml nicht schreibbar: %s", path, exc_info=True)
+        return False
     return True

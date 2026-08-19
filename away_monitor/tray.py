@@ -11,18 +11,13 @@ from pathlib import Path
 import pystray
 from PIL import Image
 
+from . import theme
 from .icon import render
 from .monitor import Monitor, State
 
 log = logging.getLogger(__name__)
 
-_COLORS = {
-    State.ACTIVE: "#3ecf8e",
-    State.WATCHING: "#4aa3ff",
-    State.WARNING: "#ff9f43",
-    State.LOCKED: "#8a8a96",
-    State.PAUSED: "#5c5c66",
-}
+_COLORS = theme.STATE_COLORS
 
 
 def _icon_image(color: str, paused: bool) -> Image.Image:
@@ -33,10 +28,12 @@ class Tray:
     def __init__(self, monitor: Monitor, config_path: Path, log_path: Path,
                  on_quit: Callable[[], None],
                  on_preview_toggle: Callable[[bool], None],
-                 on_check_updates: Callable[[], None]) -> None:
+                 on_check_updates: Callable[[], None],
+                 on_sticky_toggle: Callable[[bool], None]) -> None:
         self._monitor = monitor
         self._on_preview_toggle = on_preview_toggle
         self._on_check_updates = on_check_updates
+        self._on_sticky_toggle = on_sticky_toggle
         self._config_path = config_path
         self._log_path = log_path
         self._on_quit = on_quit
@@ -49,6 +46,8 @@ class Tray:
                 pystray.Menu.SEPARATOR,
                 pystray.MenuItem("Live-Ansicht", self._toggle_preview,
                                  checked=lambda _item: self._monitor.preview_enabled),
+                pystray.MenuItem("Notizzettel", self._toggle_sticky,
+                                 checked=lambda _item: self._monitor.sticky_enabled),
                 pystray.MenuItem("Pausiert", self._toggle_pause,
                                  checked=lambda _item: self._monitor.paused),
                 pystray.MenuItem("Jetzt sperren", self._lock_now),
@@ -93,6 +92,9 @@ class Tray:
 
     def _toggle_preview(self) -> None:
         self._on_preview_toggle(not self._monitor.preview_enabled)
+
+    def _toggle_sticky(self) -> None:
+        self._on_sticky_toggle(not self._monitor.sticky_enabled)
 
     def _toggle_pause(self) -> None:
         self._monitor.toggle_pause()

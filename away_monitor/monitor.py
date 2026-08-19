@@ -78,6 +78,7 @@ class Monitor(threading.Thread):
         # Live-Ansicht
         self._preview_listener: Callable[[Snapshot], None] | None = None
         self._preview_enabled = False
+        self._sticky_enabled = False
         self._last_frame = None
         self._last_faces: tuple[Face, ...] = ()
         self._last_face_seen: float | None = None
@@ -91,6 +92,10 @@ class Monitor(threading.Thread):
     @property
     def preview_enabled(self) -> bool:
         return self._preview_enabled
+
+    @property
+    def sticky_enabled(self) -> bool:
+        return self._sticky_enabled
 
     @property
     def score_threshold(self) -> float:
@@ -107,6 +112,14 @@ class Monitor(threading.Thread):
             return
         self._preview_enabled = enabled
         log.info("Live-Ansicht %s", "geoeffnet" if enabled else "geschlossen")
+
+    def set_sticky_enabled(self, enabled: bool) -> None:
+        """Der Notizzettel braucht Zustand und Countdown, aber kein Kamerabild --
+        er beschleunigt den Takt deshalb nicht."""
+        if enabled == self._sticky_enabled:
+            return
+        self._sticky_enabled = enabled
+        log.info("Notizzettel %s", "eingeblendet" if enabled else "ausgeblendet")
 
     def set_score_threshold(self, value: float) -> None:
         self._detector.score_threshold = value
@@ -261,7 +274,7 @@ class Monitor(threading.Thread):
 
     def _publish(self, now: float, idle: float) -> None:
         listener = self._preview_listener
-        if listener is None or not self._preview_enabled:
+        if listener is None or not (self._preview_enabled or self._sticky_enabled):
             return
         countdown = None
         if self.state is State.WARNING:
