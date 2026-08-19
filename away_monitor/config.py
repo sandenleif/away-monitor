@@ -119,12 +119,12 @@ on_camera_error = "never_lock"
 start_paused = false
 
 [update]
-# Herkunft der App im Format "besitzer/name". Voreingestellt ist das Repository,
-# aus dem diese Version stammt -- die Selbstaktualisierung laeuft also ohne
-# Zutun. Leeren schaltet jede Updatepruefung ab; auf einen Fork zeigen laesst
-# die App von dort aktualisieren.
+# Herkunft der App im Format "besitzer/name". Wird die Zeile geleert oder
+# entfernt, traegt die App die Voreinstellung beim naechsten Start wieder ein --
+# sie soll ihre eigene Herkunft nie verlieren. Auf einen Fork zeigen laesst sie
+# von dort aktualisieren.
 repository = "sandenleif/away-monitor"
-# Beim Start einmal nachsehen, ob es eine neuere Version gibt.
+# Updatepruefung abschalten: hier auf false setzen (nicht das Repository leeren).
 check_on_start = true
 # Ohne veroeffentlichte SHA256-Pruefsumme wird nichts installiert.
 # Nur abschalten, wenn du sehr genau weisst, warum.
@@ -184,7 +184,8 @@ def load(path: Path = CONFIG_PATH) -> Config:
             return Config()
 
     try:
-        raw = tomllib.loads(path.read_text(encoding="utf-8"))
+        text = path.read_text(encoding="utf-8")
+        raw = tomllib.loads(text)
     except (OSError, tomllib.TOMLDecodeError):
         log.exception("config.toml unlesbar -- es gelten die Defaults")
         return Config()
@@ -197,6 +198,14 @@ def load(path: Path = CONFIG_PATH) -> Config:
     update = raw.get("update", {})
     logging_ = raw.get("logging", {})
     defaults = Config()
+
+    repository = str(update.get("repository", "")).strip()
+    if not repository:
+        # Weder leeren noch Loeschen darf die App ihre Herkunft kosten -- sonst
+        # sucht eine ueber Versionen mitgeschleppte config.toml nie nach Updates,
+        # ohne dass irgendetwas sichtbar kaputt waere.
+        repository = DEFAULT_REPOSITORY
+        _restore_repository(path, text)
 
     on_error = str(behavior.get("on_camera_error", defaults.on_camera_error))
     if on_error not in ("never_lock", "lock"):
@@ -225,7 +234,7 @@ def load(path: Path = CONFIG_PATH) -> Config:
         preview_max_width=int(preview.get("max_width", defaults.preview_max_width)),
         on_camera_error=on_error,
         start_paused=bool(behavior.get("start_paused", defaults.start_paused)),
-        update_repository=str(update.get("repository", defaults.update_repository)).strip(),
+        update_repository=repository,
         update_check_on_start=bool(
             update.get("check_on_start", defaults.update_check_on_start)
         ),
@@ -235,6 +244,48 @@ def load(path: Path = CONFIG_PATH) -> Config:
         log_level=str(logging_.get("level", defaults.log_level)),
         log_file=_resolve(str(logging_.get("file", "away-monitor.log")), DATA_ROOT),
     )
+
+
+_REPOSITORY_LINE = re.compile(r'^(\s*repository\s*=\s*).*$', re.MULTILINE)
+_UPDATE_SECTION = re.compile(r'^\[update\]\s*$', re.MULTILINE)
+
+_UPDATE_BLOCK = """
+
+[update]
+# Herkunft der App im Format "besitzer/name" -- nachgetragen, weil sie fehlte.
+repository = "{repository}"
+# Updatepruefung abschalten: hier auf false setzen (nicht das Repository leeren).
+check_on_start = true
+# Ohne veroeffentlichte SHA256-Pruefsumme wird nichts installiert.
+require_checksum = true
+"""
+
+
+def _restore_repository(path: Path, text: str) -> None:
+    """Traegt die Voreinstellung in die Datei zurueck.
+
+    Betrifft mit aelteren Versionen angelegte Dateien: dort stand die Zeile leer,
+    weil es noch keine Voreinstellung gab. Ohne diesen Schritt bliebe sie leer,
+    und die App wuerde nie nach Updates sehen -- unauffaellig, weil nichts
+    fehlschlaegt."""
+    if _REPOSITORY_LINE.search(text):
+        updated = _REPOSITORY_LINE.sub(
+            lambda m: f'{m.group(1)}"{DEFAULT_REPOSITORY}"', text, count=1
+        )
+    elif _UPDATE_SECTION.search(text):
+        replacement = "\n".join(["[update]", f'repository = "{DEFAULT_REPOSITORY}"'])
+        updated = _UPDATE_SECTION.sub(replacement, text, count=1)
+    else:
+        updated = text.rstrip("\n") + _UPDATE_BLOCK.format(repository=DEFAULT_REPOSITORY)
+
+    if updated == text:
+        return
+    try:
+        path.write_text(updated, encoding="utf-8")
+        log.info("Update-Repository in %s nachgetragen: %s", path, DEFAULT_REPOSITORY)
+    except OSError:
+        # Nicht schlimm: im Speicher gilt die Voreinstellung ohnehin.
+        log.warning("Konnte %s nicht ergaenzen", path, exc_info=True)
 
 
 _THRESHOLD_LINE = re.compile(r"^(\s*score_threshold\s*=\s*)[0-9.]+", re.MULTILINE)

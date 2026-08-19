@@ -120,9 +120,12 @@ check_on_start = true
 require_checksum = true
 ```
 
-Wer das nicht will, leert `repository` — dann wird nichts abgefragt und nichts
-geladen. Wer einen Fork pflegt, trägt ihn dort ein und bekommt die Updates von
-dort.
+Die Zeile zu leeren oder zu löschen schaltet **nichts** ab: die App trägt ihre
+Herkunft beim nächsten Start wieder ein. Das ist Absicht — eine über Versionen
+mitgeschleppte `config.toml` soll nicht dazu führen, dass stillschweigend nie
+wieder nach Updates gesehen wird. Zum Abschalten gibt es `check_on_start =
+false`. Wer einen Fork pflegt, trägt ihn ein und bekommt die Updates von dort;
+ein gesetzter Wert wird nie überschrieben.
 
 Die App sieht acht Sekunden nach dem Start einmal nach und
 meldet sich nur, wenn es wirklich etwas Neueres gibt. Manuell geht es über
@@ -259,7 +262,7 @@ deutlich mehr Aufwand und will sauber getunt werden.
 .venv\Scripts\python.exe -m unittest discover -s tests
 ```
 
-59 Tests, fast alle ohne Hardware. Der Zustandsautomat läuft gegen Fakes an
+62 Tests, fast alle ohne Hardware. Der Zustandsautomat läuft gegen Fakes an
 einer Fake-Uhr, die Kamera gegen ein Fake-cv2, der Updater gegen einen lokalen
 HTTP-Server. Abgedeckt sind unter anderem:
 
