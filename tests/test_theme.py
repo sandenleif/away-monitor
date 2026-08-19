@@ -75,5 +75,58 @@ class ImageTest(unittest.TestCase):
         self.assertGreater(image.getpixel((8, 8))[1], 200)
 
 
+
+class TrayColorTest(unittest.TestCase):
+    """Die Tray-Farben kommen aus theme.STATE_COLORS -- das ist mit den
+    Beschriftungen indiziert, nicht mit den Enum-Mitgliedern. Genau daran ist
+    der Start einmal zerbrochen."""
+
+    def test_jeder_zustand_findet_seine_theme_farbe(self) -> None:
+        from away_monitor.tray import state_color
+
+        for state in State:
+            self.assertEqual(state_color(state), theme.STATE_COLORS[state.value],
+                             state.name)
+
+    def test_die_aktiven_zustaende_sind_unterscheidbar(self) -> None:
+        from away_monitor.tray import state_color
+
+        colors = {state_color(s) for s in (State.ACTIVE, State.WATCHING, State.WARNING)}
+        self.assertEqual(len(colors), 3, "sonst sieht man im Tray keinen Unterschied")
+
+    def test_symbol_laesst_sich_fuer_jeden_zustand_zeichnen(self) -> None:
+        from away_monitor.icon import render
+        from away_monitor.tray import state_color
+
+        for state in State:
+            image = render(state_color(state), state is State.PAUSED)
+            self.assertEqual(image.size, (64, 64), state.name)
+
+
+class TrayConstructionTest(unittest.TestCase):
+    """Der Absturz lag im Konstruktor -- also wird er gebaut."""
+
+    def test_tray_laesst_sich_anlegen(self) -> None:
+        from pathlib import Path
+        from unittest import mock
+
+        from away_monitor.tray import Tray
+
+        monitor = mock.Mock()
+        monitor.state = State.ACTIVE
+        monitor.note = ""
+        monitor.paused = False
+        monitor.preview_enabled = False
+        monitor.sticky_enabled = False
+
+        noop = lambda *_a, **_k: None  # noqa: E731
+        tray = Tray(monitor, Path("config.toml"), Path("away-monitor.log"),
+                    on_quit=noop, on_preview_toggle=noop, on_check_updates=noop,
+                    on_sticky_toggle=noop)
+        self.assertIsNotNone(tray)
+        # Statuszeile und Zustandswechsel laufen ueber dieselbe Farbtabelle.
+        self.assertIn("aktiv", tray._status_text(None))
+
+
 if __name__ == "__main__":
     unittest.main(verbosity=2)

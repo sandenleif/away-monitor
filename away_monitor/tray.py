@@ -17,7 +17,10 @@ from .monitor import Monitor, State
 
 log = logging.getLogger(__name__)
 
-_COLORS = theme.STATE_COLORS
+def state_color(state: State) -> str:
+    """Farbe eines Zustands. Ueber state.value nachschlagen -- theme.STATE_COLORS
+    ist mit den Beschriftungen indiziert, nicht mit den Enum-Mitgliedern."""
+    return theme.STATE_COLORS.get(state.value, theme.NEUTRAL)
 
 
 def _icon_image(color: str, paused: bool) -> Image.Image:
@@ -39,7 +42,7 @@ class Tray:
         self._on_quit = on_quit
         self._icon = pystray.Icon(
             "away-monitor",
-            icon=_icon_image(_COLORS[State.ACTIVE], False),
+            icon=_icon_image(state_color(State.ACTIVE), False),
             title="away-monitor",
             menu=pystray.Menu(
                 pystray.MenuItem(self._status_text, lambda: None, enabled=False),
@@ -79,7 +82,7 @@ class Tray:
 
     def set_state(self, state: State, note: str) -> None:
         try:
-            self._icon.icon = _icon_image(_COLORS.get(state, "#8a8a96"), state is State.PAUSED)
+            self._icon.icon = _icon_image(state_color(state), state is State.PAUSED)
             self._icon.title = f"away-monitor · {state.value}" + (f" · {note}" if note else "")
             self._icon.update_menu()
         except Exception:

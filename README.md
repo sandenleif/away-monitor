@@ -278,7 +278,7 @@ deutlich mehr Aufwand und will sauber getunt werden.
 .venv\Scripts\python.exe -m unittest discover -s tests
 ```
 
-73 Tests, fast alle ohne Hardware. Der Zustandsautomat läuft gegen Fakes an
+77 Tests, fast alle ohne Hardware. Der Zustandsautomat läuft gegen Fakes an
 einer Fake-Uhr, die Kamera gegen ein Fake-cv2, der Updater gegen einen lokalen
 HTTP-Server. Abgedeckt sind unter anderem:
 
