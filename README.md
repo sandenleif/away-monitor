@@ -109,19 +109,22 @@ die Boxen auf schwarzem Grund.
 
 ## Updates
 
-Die App kann sich selbst aus GitHub-Releases aktualisieren. Dafür muss das
-Repository in der `config.toml` eingetragen sein:
+Die App aktualisiert sich selbst aus GitHub-Releases. Ihre Herkunft ist fest
+voreingestellt — eine frisch heruntergeladene Exe findet ihre Updates ohne
+Zutun:
 
 ```toml
 [update]
-repository = "deinname/away-monitor"
+repository = "sandenleif/away-monitor"
 check_on_start = true
 require_checksum = true
 ```
 
-Ohne Eintrag passiert nichts — es wird nichts abgefragt und nichts geladen.
+Wer das nicht will, leert `repository` — dann wird nichts abgefragt und nichts
+geladen. Wer einen Fork pflegt, trägt ihn dort ein und bekommt die Updates von
+dort.
 
-Ist er gesetzt, sieht die App acht Sekunden nach dem Start einmal nach und
+Die App sieht acht Sekunden nach dem Start einmal nach und
 meldet sich nur, wenn es wirklich etwas Neueres gibt. Manuell geht es über
 Tray → **Nach Updates suchen** oder `away-monitor.exe --check-update`.
 
@@ -256,7 +259,7 @@ deutlich mehr Aufwand und will sauber getunt werden.
 .venv\Scripts\python.exe -m unittest discover -s tests
 ```
 
-48 Tests, fast alle ohne Hardware. Der Zustandsautomat läuft gegen Fakes an
+59 Tests, fast alle ohne Hardware. Der Zustandsautomat läuft gegen Fakes an
 einer Fake-Uhr, die Kamera gegen ein Fake-cv2, der Updater gegen einen lokalen
 HTTP-Server. Abgedeckt sind unter anderem:
 

@@ -12,6 +12,10 @@ from pathlib import Path
 
 log = logging.getLogger(__name__)
 
+# Woher diese Version stammt. Steht bewusst im Code und nicht nur in der
+# config.toml: eine frisch ausgepackte Exe soll ihre Updates von allein finden.
+DEFAULT_REPOSITORY = "sandenleif/away-monitor"
+
 
 def _bundle_root() -> Path:
     """Wo die mitgelieferten Daten liegen (das ONNX-Modell).
@@ -115,8 +119,11 @@ on_camera_error = "never_lock"
 start_paused = false
 
 [update]
-# GitHub-Repository im Format "besitzer/name". Leer laesst die Updatesuche aus.
-repository = ""
+# Herkunft der App im Format "besitzer/name". Voreingestellt ist das Repository,
+# aus dem diese Version stammt -- die Selbstaktualisierung laeuft also ohne
+# Zutun. Leeren schaltet jede Updatepruefung ab; auf einen Fork zeigen laesst
+# die App von dort aktualisieren.
+repository = "sandenleif/away-monitor"
 # Beim Start einmal nachsehen, ob es eine neuere Version gibt.
 check_on_start = true
 # Ohne veroeffentlichte SHA256-Pruefsumme wird nichts installiert.
@@ -154,7 +161,7 @@ class Config:
     on_camera_error: str = "never_lock"
     start_paused: bool = False
 
-    update_repository: str = ""
+    update_repository: str = DEFAULT_REPOSITORY
     update_check_on_start: bool = True
     update_require_checksum: bool = True
 
